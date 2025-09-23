@@ -17,21 +17,29 @@ class ChatRoomPage extends StatefulWidget {
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  // TODO: Integrate WebRTC service properly
+  // final WebRTCService _webrtcService = WebRTCService();
 
   final List<_ChatMessage> _messages = [];
   String? _systemMessage;
   bool _showScrollToBottom = false;
-  bool _someoneTyping = false;
+  final bool _someoneTyping = false;
+  // TODO: Add these back when WebRTC is integrated
+  // List<String> _connectedPeers = [];
+  // String _connectionState = 'Disconnected';
 
   @override
   void initState() {
     super.initState();
     _showSystemMessage("Welcome to the chat! Messages will appear here.");
     _scrollController.addListener(_handleScroll);
+    // TODO: Initialize WebRTC service here
+    // _initializeWebRTC();
   }
 
   void _handleScroll() {
-    final atBottom = _scrollController.offset >=
+    final atBottom =
+        _scrollController.offset >=
         _scrollController.position.maxScrollExtent - 10;
     setState(() {
       _showScrollToBottom = !atBottom;
@@ -49,11 +57,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
     setState(() {
-      _messages.add(_ChatMessage(
-        user: widget.userName,
-        text: text,
-        isOwn: true,
-      ));
+      _messages.add(
+        _ChatMessage(user: widget.userName, text: text, isOwn: true),
+      );
       _messageController.clear();
     });
     _scrollToBottom();
@@ -97,16 +103,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   // Header
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(30)),
+                        top: Radius.circular(30),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 20,
-                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
@@ -119,7 +127,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               const Text(
                                 '💬',
                                 style: TextStyle(
-                                    fontSize: 28, fontWeight: FontWeight.bold),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Column(
@@ -128,29 +138,34 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   Text(
                                     widget.userName,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                   Row(
                                     children: [
                                       CircleAvatar(
                                         radius: 13,
-                                        backgroundColor: const Color(0xFF667eea),
+                                        backgroundColor: const Color(
+                                          0xFF667eea,
+                                        ),
                                         child: Text(
                                           widget.userName.isNotEmpty
                                               ? widget.userName[0].toUpperCase()
                                               : '',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold),
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         "Room: ${widget.roomCode}",
                                         style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFF764ba2)),
+                                          fontSize: 13,
+                                          color: Color(0xFF764ba2),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -161,14 +176,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         ),
                         // Copy room code button
                         IconButton(
-                          icon: const Icon(Icons.copy, color: Color(0xFF667eea)),
+                          icon: const Icon(
+                            Icons.copy,
+                            color: Color(0xFF667eea),
+                          ),
                           tooltip: "Copy Room Code",
                           onPressed: () {
                             // Clipboard logic here
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text(
-                                      'Room code "${widget.roomCode}" copied!')),
+                                content: Text(
+                                  'Room code "${widget.roomCode}" copied!',
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -186,16 +206,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   // Chat area
                   Expanded(
                     child: Container(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       child: Stack(
                         children: [
                           // Messages list
                           Padding(
                             padding: const EdgeInsets.only(
-                                left: 8, right: 8, bottom: 70, top: 8),
+                              left: 8,
+                              right: 8,
+                              bottom: 70,
+                              top: 8,
+                            ),
                             child: ListView.builder(
                               controller: _scrollController,
-                              itemCount: _messages.length +
+                              itemCount:
+                                  _messages.length +
                                   (_systemMessage != null ? 1 : 0),
                               itemBuilder: (context, index) {
                                 if (_systemMessage != null && index == 0) {
@@ -205,25 +230,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                     child: Center(
                                       child: Container(
                                         margin: const EdgeInsets.symmetric(
-                                            vertical: 8),
+                                          vertical: 8,
+                                        ),
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.grey[200],
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Text(
                                           _systemMessage!,
                                           style: const TextStyle(
-                                              color: Color(0xFF764ba2)),
+                                            color: Color(0xFF764ba2),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   );
                                 }
-                                final msg = _messages[
-                                    index - (_systemMessage != null ? 1 : 0)];
+                                final msg =
+                                    _messages[index -
+                                        (_systemMessage != null ? 1 : 0)];
                                 return _ChatBubble(msg: msg);
                               },
                             ),
@@ -247,8 +278,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   Text(
                                     "Someone is typing...",
                                     style: TextStyle(
-                                        color: Color(0xFF764ba2),
-                                        fontStyle: FontStyle.italic),
+                                      color: Color(0xFF764ba2),
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -261,8 +293,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               child: FloatingActionButton.small(
                                 backgroundColor: const Color(0xFF667eea),
                                 onPressed: _scrollToBottom,
-                                child: const Icon(Icons.arrow_downward,
-                                    color: Colors.white),
+                                child: const Icon(
+                                  Icons.arrow_downward,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                         ],
@@ -272,8 +306,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   // Input area
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    color: Colors.white.withOpacity(0.95),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    color: Colors.white.withValues(alpha: 0.95),
                     child: Row(
                       children: [
                         Expanded(
@@ -286,7 +322,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               filled: true,
                               fillColor: const Color(0xFFF8F9FA),
                               contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 16),
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: const BorderSide(
@@ -322,7 +360,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             padding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 20),
+                              vertical: 16,
+                              horizontal: 20,
+                            ),
                           ),
                           child: const Text("Send"),
                         ),
@@ -344,11 +384,7 @@ class _ChatMessage {
   final String text;
   final bool isOwn;
 
-  _ChatMessage({
-    required this.user,
-    required this.text,
-    required this.isOwn,
-  });
+  _ChatMessage({required this.user, required this.text, required this.isOwn});
 }
 
 class _ChatBubble extends StatelessWidget {
@@ -378,7 +414,9 @@ class _ChatBubble extends StatelessWidget {
                 child: Text(
                   msg.user.isNotEmpty ? msg.user[0].toUpperCase() : '',
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             if (!isOwn) const SizedBox(width: 8),
@@ -413,7 +451,9 @@ class _ChatBubble extends StatelessWidget {
                 child: Text(
                   msg.user.isNotEmpty ? msg.user[0].toUpperCase() : '',
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
           ],

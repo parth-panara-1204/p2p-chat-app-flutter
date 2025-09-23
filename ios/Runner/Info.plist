@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- WebRTC Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for video calls (if enabled).</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for voice calls (if enabled).</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app uses local network to connect with other users for peer-to-peer chat.</string>
 </dict>
 </plist>

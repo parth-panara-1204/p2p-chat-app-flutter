@@ -33,7 +33,6 @@ class P2PChatApp extends StatelessWidget {
   }
 }
 
-
 class IndexPage extends StatefulWidget {
   const IndexPage({super.key});
 
@@ -61,12 +60,9 @@ class _IndexPageState extends State<IndexPage> {
       _loading = true;
     });
     Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
       setState(() => _loading = false);
-      Navigator.pushNamed(
-        context,
-        '/lobby',
-        arguments: {'userName': name},
-      );
+      Navigator.pushNamed(context, '/lobby', arguments: {'userName': name});
     });
   }
 
@@ -88,11 +84,11 @@ class _IndexPageState extends State<IndexPage> {
               constraints: const BoxConstraints(maxWidth: 400),
               padding: const EdgeInsets.all(40),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 40,
                     offset: const Offset(0, 20),
                   ),
@@ -136,7 +132,9 @@ class _IndexPageState extends State<IndexPage> {
                       filled: true,
                       fillColor: const Color(0xFFF8F9FA),
                       contentPadding: const EdgeInsets.symmetric(
-                          vertical: 15, horizontal: 20),
+                        vertical: 15,
+                        horizontal: 20,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
@@ -173,7 +171,9 @@ class _IndexPageState extends State<IndexPage> {
                       onPressed: _loading ? null : _continueToLobby,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 18, horizontal: 25),
+                          vertical: 18,
+                          horizontal: 25,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -217,18 +217,9 @@ class _IndexPageState extends State<IndexPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: const [
-                      _FeatureBox(
-                        icon: '🔒',
-                        label: 'Secure P2P',
-                      ),
-                      _FeatureBox(
-                        icon: '⚡',
-                        label: 'Real-time',
-                      ),
-                      _FeatureBox(
-                        icon: '🌐',
-                        label: 'No Server',
-                      ),
+                      _FeatureBox(icon: '🔒', label: 'Secure P2P'),
+                      _FeatureBox(icon: '⚡', label: 'Real-time'),
+                      _FeatureBox(icon: '🌐', label: 'No Server'),
                     ],
                   ),
                 ],
@@ -258,10 +249,7 @@ class _FeatureBox extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(
-              icon,
-              style: const TextStyle(fontSize: 24),
-            ),
+            Text(icon, style: const TextStyle(fontSize: 24)),
             const SizedBox(height: 5),
             Text(
               label,
