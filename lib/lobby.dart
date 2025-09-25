@@ -30,6 +30,7 @@ class _LobbyPageState extends State<LobbyPage> {
       _showJoinModal = true;
     });
     Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
       _roomCodeController.clear();
       FocusScope.of(context).requestFocus(FocusNode());
     });
@@ -51,8 +52,9 @@ class _LobbyPageState extends State<LobbyPage> {
   }
 
   void _createRoom() {
-    final code =
-        (DateTime.now().millisecondsSinceEpoch % 1000000).toRadixString(36).toUpperCase();
+    final code = (DateTime.now().millisecondsSinceEpoch % 1000000)
+        .toRadixString(36)
+        .toUpperCase();
     _goToChat(code);
   }
 
@@ -77,11 +79,11 @@ class _LobbyPageState extends State<LobbyPage> {
                     constraints: const BoxConstraints(maxWidth: 500),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 40,
                           offset: const Offset(0, 20),
                         ),
@@ -95,13 +97,17 @@ class _LobbyPageState extends State<LobbyPage> {
                             const Text(
                               '💬',
                               style: TextStyle(
-                                  fontSize: 32, fontWeight: FontWeight.bold),
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             const Text(
                               'P2P Chat',
                               style: TextStyle(
-                                  fontSize: 26, fontWeight: FontWeight.bold),
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -109,7 +115,9 @@ class _LobbyPageState extends State<LobbyPage> {
                         Text(
                           'Welcome, ${widget.userName}!\nChoose where you\'d like to chat.',
                           style: const TextStyle(
-                              fontSize: 16, color: Color(0xFF764ba2)),
+                            fontSize: 16,
+                            color: Color(0xFF764ba2),
+                          ),
                         ),
                         const SizedBox(height: 32),
                         Column(
@@ -161,7 +169,7 @@ class _LobbyPageState extends State<LobbyPage> {
                 GestureDetector(
                   onTap: _closeModal,
                   child: Container(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     child: Center(
                       child: GestureDetector(
                         onTap: () {},
@@ -178,9 +186,10 @@ class _LobbyPageState extends State<LobbyPage> {
                               const Text(
                                 'Join Private Room',
                                 style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF764ba2)),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF764ba2),
+                                ),
                               ),
                               const SizedBox(height: 18),
                               TextField(
@@ -244,7 +253,7 @@ class _RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withOpacity(0.08),
+      color: color.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -254,10 +263,7 @@ class _RoomCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                icon,
-                style: TextStyle(fontSize: 32, color: color),
-              ),
+              Text(icon, style: TextStyle(fontSize: 32, color: color)),
               const SizedBox(width: 18),
               Expanded(
                 child: Column(

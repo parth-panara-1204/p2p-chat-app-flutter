@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.p2p_chat"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"  // Updated for flutter_webrtc compatibility
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
