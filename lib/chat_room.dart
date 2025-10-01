@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'services/webrtc_service.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String userName;
@@ -17,24 +19,28 @@ class ChatRoomPage extends StatefulWidget {
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  // TODO: Integrate WebRTC service properly
-  // final WebRTCService _webrtcService = WebRTCService();
+  late final WebRTCService _webrtcService;
+  StreamSubscription<bool>?
+  _dcSub; // retained if you later want to reflect channel state in UI
 
   final List<_ChatMessage> _messages = [];
   String? _systemMessage;
   bool _showScrollToBottom = false;
   final bool _someoneTyping = false;
-  // TODO: Add these back when WebRTC is integrated
-  // List<String> _connectedPeers = [];
-  // String _connectionState = 'Disconnected';
 
   @override
   void initState() {
     super.initState();
     _showSystemMessage("Welcome to the chat! Messages will appear here.");
     _scrollController.addListener(_handleScroll);
-    // TODO: Initialize WebRTC service here
-    // _initializeWebRTC();
+
+    // Initialize WebRTC service (owns signaling internally)
+    _webrtcService = WebRTCService(onMessage: _handlePeerMessage);
+    _webrtcService.initialize(widget.userName, widget.roomCode);
+
+    _dcSub = _webrtcService.dataChannelOpenStream.listen((open) {
+      // Reserved for future UI updates when reflecting channel state
+    });
   }
 
   void _handleScroll() {
@@ -63,7 +69,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       _messageController.clear();
     });
     _scrollToBottom();
-    // TODO: Send message to peers via WebRTC/WebSocket
+    // Send message to peers via WebRTC
+    _webrtcService.sendMessage(text);
   }
 
   void _scrollToBottom() {
@@ -80,7 +87,16 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _webrtcService.dispose();
+    _dcSub?.cancel();
     super.dispose();
+  }
+
+  void _handlePeerMessage(String user, String message) {
+    setState(() {
+      _messages.add(_ChatMessage(user: user, text: message, isOwn: false));
+    });
+    _scrollToBottom();
   }
 
   @override
@@ -172,6 +188,88 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 ],
                               ),
                             ],
+                          ),
+                        ),
+                        // Peers panel
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: StreamBuilder<List<String>>(
+                            stream: _webrtcService.peersStream,
+                            initialData: const [],
+                            builder: (context, snapshot) {
+                              final peers = snapshot.data ?? [];
+                              if (peers.isEmpty) {
+                                return const Text(
+                                  'No peers',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF764ba2),
+                                  ),
+                                );
+                              }
+                              return Row(
+                                children: peers
+                                    .map(
+                                      (id) => Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 10,
+                                              backgroundColor: const Color(
+                                                0xFF667eea,
+                                              ),
+                                              child: Text(
+                                                (_webrtcService
+                                                            .getPeerDisplayName(
+                                                              id,
+                                                            )
+                                                            .isNotEmpty
+                                                        ? _webrtcService
+                                                              .getPeerDisplayName(
+                                                                id,
+                                                              )[0]
+                                                        : '')
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _webrtcService.getPeerDisplayName(
+                                                id,
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              );
+                            },
                           ),
                         ),
                         // Copy room code button

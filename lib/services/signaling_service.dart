@@ -7,6 +7,42 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../config/webrtc_config.dart';
 
 class SignalingService {
+  /// Dispose of the service and close the WebSocket connection
+  void dispose() {
+    disconnect();
+  }
+
+  /// Public method to start the connection (calls initialize)
+  Future<void> connect() async {
+    await initialize();
+  }
+
+  /// Send a generic signaling message to a peer
+  void sendSignal(String type, dynamic data, String to) {
+    if (_channel == null) {
+      debugPrint('Cannot send signal: not connected to signaling server');
+      return;
+    }
+    final signalMessage = {
+      'type': 'signal',
+      'to': to,
+      'from': _localUserId,
+      'signal': {'type': type, ...data is Map<String, dynamic> ? data : {}},
+    };
+    try {
+      final jsonMessage = json.encode(signalMessage);
+      _channel!.sink.add(jsonMessage);
+      debugPrint('Sent signal: $type to $to');
+    } catch (e) {
+      debugPrint('Error sending signal: $e');
+    }
+  }
+
+  final String? userName;
+  final String? roomCode;
+  final void Function(List<String>)? onPeerList;
+  final void Function(String)? onConnectionState;
+  final void Function(String type, dynamic data, String from)? onSignal;
   WebSocketChannel? _channel;
   String? _currentRoom;
   String? _localUserId;
@@ -20,8 +56,21 @@ class SignalingService {
 
   // Auto-configured signaling server URLs (from WebRTCConfig)
   static String get _signalingServerUrl => WebRTCConfig.signalingUrl;
-  static String get _fallbackUrl => WebRTCConfig.fallbackSignalingUrl;
   bool get isConnected => _channel != null;
+
+  /// Constructor with named parameters
+  SignalingService({
+    this.userName,
+    this.roomCode,
+    this.onPeerList,
+    this.onConnectionState,
+    this.onSignal,
+    this.onPeerJoined,
+    this.onPeerLeft,
+    this.onOfferReceived,
+    this.onAnswerReceived,
+    this.onIceCandidateReceived,
+  }) {}
 
   /// Initialize signaling service
   Future<void> initialize() async {
@@ -31,6 +80,11 @@ class SignalingService {
 
       // Try to connect to signaling server, fallback to echo service
       await _connectToSignalingServer();
+
+      // Auto-join room if parameters provided
+      if (roomCode != null && userName != null) {
+        await joinRoom(roomCode!, userName!);
+      }
     } catch (e) {
       debugPrint('Signaling service initialization error: $e');
       rethrow;
@@ -40,20 +94,13 @@ class SignalingService {
   /// Connect to signaling server
   Future<void> _connectToSignalingServer() async {
     try {
-      // First try the actual signaling server
       _channel = WebSocketChannel.connect(Uri.parse(_signalingServerUrl));
       debugPrint('Connected to signaling server');
+      onConnectionState?.call('Connected');
     } catch (e) {
-      debugPrint('Failed to connect to signaling server, using fallback: $e');
-
-      // Fallback to echo service (for basic testing)
-      try {
-        _channel = WebSocketChannel.connect(Uri.parse(_fallbackUrl));
-        debugPrint('Connected to fallback WebSocket service');
-      } catch (fallbackError) {
-        debugPrint('Failed to connect to fallback service: $fallbackError');
-        rethrow;
-      }
+      debugPrint('Failed to connect to signaling server: $e');
+      onConnectionState?.call('Disconnected');
+      rethrow;
     }
 
     // Setup message listener
@@ -61,10 +108,12 @@ class SignalingService {
       _handleSignalingMessage,
       onError: (error) {
         debugPrint('WebSocket error: $error');
+        onConnectionState?.call('Error');
       },
       onDone: () {
         debugPrint('WebSocket connection closed');
         _channel = null;
+        onConnectionState?.call('Disconnected');
       },
     );
 
@@ -103,6 +152,16 @@ class SignalingService {
 
           final peers = message['peers'] as List?;
           if (peers != null) {
+            // Notify peer list callback
+            if (onPeerList != null) {
+              final peerIds = <String>[];
+              for (var peer in peers) {
+                final peerId = peer['id'] as String?;
+                if (peerId != null) peerIds.add(peerId);
+              }
+              onPeerList!(peerIds);
+            }
+            // Also call onPeerJoined for each peer
             for (var peer in peers) {
               final peerId = peer['id'] as String?;
               final userName = peer['name'] as String?;
@@ -132,16 +191,26 @@ class SignalingService {
 
         // Handle WebRTC signaling messages
         case 'signal':
-          final signalData = message['signal'] as Map<String, dynamic>?;
           final fromPeer = message['from'] as String?;
+          final signalData = message['signal'] as Map<String, dynamic>?;
 
+          // Path A: nested 'signal' present
           if (signalData != null && fromPeer != null) {
             final signalType = signalData['type'] as String?;
 
+            if (onSignal != null) {
+              onSignal!(signalType ?? '', signalData, fromPeer);
+            }
+
             switch (signalType) {
               case 'offer':
-                final offerData = signalData['offer'] as Map<String, dynamic>?;
-                if (offerData != null) {
+                final offerData =
+                    (signalData['offer'] as Map<String, dynamic>?) ??
+                    <String, dynamic>{
+                      'sdp': signalData['sdp'],
+                      'type': signalData['sdpType'],
+                    };
+                if (offerData['sdp'] != null && offerData['type'] != null) {
                   final offer = RTCSessionDescription(
                     offerData['sdp'] as String,
                     offerData['type'] as String,
@@ -152,8 +221,12 @@ class SignalingService {
 
               case 'answer':
                 final answerData =
-                    signalData['answer'] as Map<String, dynamic>?;
-                if (answerData != null) {
+                    (signalData['answer'] as Map<String, dynamic>?) ??
+                    <String, dynamic>{
+                      'sdp': signalData['sdp'],
+                      'type': signalData['sdpType'],
+                    };
+                if (answerData['sdp'] != null && answerData['type'] != null) {
                   final answer = RTCSessionDescription(
                     answerData['sdp'] as String,
                     answerData['type'] as String,
@@ -163,8 +236,10 @@ class SignalingService {
                 break;
 
               case 'ice-candidate':
+              case 'candidate':
                 final candidateData =
-                    signalData['candidate'] as Map<String, dynamic>?;
+                    (signalData['candidate'] as Map<String, dynamic>?) ??
+                    (signalData['iceCandidate'] as Map<String, dynamic>?);
                 if (candidateData != null) {
                   final candidate = RTCIceCandidate(
                     candidateData['candidate'] as String,
@@ -175,6 +250,32 @@ class SignalingService {
                 }
                 break;
             }
+            break;
+          }
+
+          // Path B: no nested 'signal'; use top-level 'sdp' or 'candidate'
+          final topLevelSdp = message['sdp'];
+          final topLevelCandidate = message['candidate'];
+          if (fromPeer != null && topLevelSdp != null) {
+            final sdpMap = topLevelSdp as Map<String, dynamic>;
+            final desc = RTCSessionDescription(
+              sdpMap['sdp'] as String,
+              sdpMap['type'] as String,
+            );
+            if (desc.type == 'offer') {
+              onOfferReceived?.call(fromPeer, desc);
+            } else if (desc.type == 'answer') {
+              onAnswerReceived?.call(fromPeer, desc);
+            }
+          }
+          if (fromPeer != null && topLevelCandidate != null) {
+            final c = topLevelCandidate as Map<String, dynamic>;
+            final cand = RTCIceCandidate(
+              c['candidate'] as String,
+              c['sdpMid'] as String?,
+              c['sdpMLineIndex'] as int?,
+            );
+            onIceCandidateReceived?.call(fromPeer, cand);
           }
           break;
 
@@ -231,9 +332,15 @@ class SignalingService {
     _sendMessage({
       'type': 'signal',
       'to': peerId,
+      'from': _localUserId,
+      // Top-level SDP for compatibility with web clients expecting { sdp }
+      'sdp': {'sdp': offer.sdp, 'type': offer.type},
       'signal': {
         'type': 'offer',
         'offer': {'sdp': offer.sdp, 'type': offer.type},
+        // Compatibility for clients expecting flat fields
+        'sdp': offer.sdp,
+        'sdpType': offer.type,
       },
     });
   }
@@ -247,9 +354,15 @@ class SignalingService {
     _sendMessage({
       'type': 'signal',
       'to': peerId,
+      'from': _localUserId,
+      // Top-level SDP for compatibility with web clients expecting { sdp }
+      'sdp': {'sdp': answer.sdp, 'type': answer.type},
       'signal': {
         'type': 'answer',
         'answer': {'sdp': answer.sdp, 'type': answer.type},
+        // Compatibility for clients expecting flat fields
+        'sdp': answer.sdp,
+        'sdpType': answer.type,
       },
     });
   }
@@ -263,9 +376,23 @@ class SignalingService {
     _sendMessage({
       'type': 'signal',
       'to': peerId,
+      'from': _localUserId,
+      // Top-level candidate for compatibility with web clients expecting { candidate }
+      'candidate': {
+        'candidate': candidate.candidate,
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
+      },
       'signal': {
-        'type': 'ice-candidate',
+        // Use 'candidate' for broad compatibility
+        'type': 'candidate',
         'candidate': {
+          'candidate': candidate.candidate,
+          'sdpMid': candidate.sdpMid,
+          'sdpMLineIndex': candidate.sdpMLineIndex,
+        },
+        // Also include alias for receivers expecting 'ice-candidate'
+        'iceCandidate': {
           'candidate': candidate.candidate,
           'sdpMid': candidate.sdpMid,
           'sdpMLineIndex': candidate.sdpMLineIndex,

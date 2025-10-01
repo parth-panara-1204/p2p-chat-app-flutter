@@ -18,7 +18,7 @@ class WebRTCConfig {
   // ========================================
 
   /// Your signaling server IP/domain - CHANGE THIS TO YOUR SERVER
-  static const String serverIP = 'YOUR_SERVER_IP'; // 👈 ONLY CHANGE THIS LINE
+  static const String serverIP = 'localhost'; // 👈 ONLY CHANGE THIS LINE
   static const int serverPort = 8765; // Updated to match your Python server
 
   // ========================================
